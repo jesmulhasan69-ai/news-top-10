@@ -20,9 +20,9 @@
           <span class="w-3 h-3 rounded-full bg-rose-600 animate-pulse"></span>
           ১০ পত্রিকার প্রধান শিরোনাম
         </h1>
-        <p class="text-xs text-slate-400 mt-0.5">দেশের সেরা ১০টি সংবাদপত্রের এক পলকের লাইভ বুলেটিন</p>
+        <p class="text-xs text-slate-400 mt-0.5">দেশের সেরা ১০টি সংবাদপত্রের এক পলকের বুলেটিন</p>
       </div>
-      <button onclick="loadRealtimeNews()" class="bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 text-xs sm:text-sm font-semibold px-3.5 py-2 rounded-xl border border-slate-700 transition flex items-center gap-1.5 shadow-sm">
+      <button onclick="fetchLeadNews()" class="bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 text-xs sm:text-sm font-semibold px-3.5 py-2 rounded-xl border border-slate-700 transition flex items-center gap-1.5 shadow-sm">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
         </svg>
@@ -43,60 +43,42 @@
       </span>
     </div>
 
-    <!-- News Grid Container -->
+    <!-- Grid Container -->
     <div id="news-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
       <div class="col-span-full py-16 text-center text-slate-400">
         <svg class="animate-spin h-8 w-8 mx-auto mb-3 text-rose-600" fill="none" viewBox="0 0 24 24">
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
         </svg>
-        রিয়েল-টাইম সংবাদ লোড হচ্ছে...
+        সার্ভার থেকে তাজা সংবাদ লোড হচ্ছে...
       </div>
     </div>
   </main>
 
   <script>
+    // আপনার তৈরি করা Google Apps Script Web App URL এখানে বসান
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzqlZqsaijLKAKIYcUNQ7N29V4lw1YOtDnRNRUW_5arp4pLqnfaS733GPOxELso7B-VLA/exec';
+
     function toBnNum(num) {
       const bn = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
       return String(num).replace(/[0-9]/g, d => bn[d]);
     }
 
-    function formatBengaliTime(dateObj) {
-      if (!dateObj || isNaN(dateObj.getTime())) return 'সাম্প্রতিক';
-      let hours = dateObj.getHours();
-      const minutes = dateObj.getMinutes().toString().padStart(2, '0');
+    function formatTime(dateStr) {
+      if (!dateStr) return 'সাম্প্রতিক';
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return 'সাম্প্রতিক';
+      let hours = d.getHours();
+      const minutes = d.getMinutes().toString().padStart(2, '0');
       const isPM = hours >= 12;
       hours = hours % 12 || 12;
       return `${toBnNum(hours.toString().padStart(2, '0'))}:${toBnNum(minutes)} ${isPM ? 'PM' : 'AM'}`;
     }
 
-    // নির্ভরযোগ্য ওপেন প্রক্সি ট্রাই করার ফাংশন
-    async function fetchXmlFeed(url) {
-      const proxies = [
-        `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-        `https://corsproxy.io/?${encodeURIComponent(url)}`
-      ];
-
-      for (const proxyUrl of proxies) {
-        try {
-          const res = await fetch(proxyUrl);
-          if (res.ok) {
-            const xmlText = await res.text();
-            if (xmlText && xmlText.includes('<rss')) {
-              return xmlText;
-            }
-          }
-        } catch (e) {
-          // ট্রাই নেক্সট প্রক্সি
-        }
-      }
-      throw new Error('সবগুলো প্রক্সি ব্যর্থ হয়েছে');
-    }
-
-    async function loadRealtimeNews() {
+    async function fetchLeadNews() {
       const container = document.getElementById('news-grid');
-      const timeLabel = document.getElementById('update-time');
       const countBadge = document.getElementById('count-badge');
+      const timeLabel = document.getElementById('update-time');
 
       container.innerHTML = `
         <div class="col-span-full py-16 text-center text-slate-400">
@@ -104,64 +86,23 @@
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
           </svg>
-          রিয়েল-টাইম সংবাদ লোড হচ্ছে...
+          সার্ভার থেকে তাজা সংবাদ লোড হচ্ছে...
         </div>
       `;
 
       try {
-        // ১টি মাত্র রিকোয়েস্টে গুগলের লাইভ বাংলা টপ স্টোরিজ ফিড
-        const googleFeedUrl = 'https://news.google.com/rss?hl=bn&gl=BD&ceid=BD:bn';
-        const xmlString = await fetchXmlFeed(googleFeedUrl);
+        const response = await fetch(SCRIPT_URL);
+        const result = await response.json();
 
-        const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(xmlString, 'text/xml');
-        const items = Array.from(xmlDoc.querySelectorAll('item'));
-
-        if (!items || items.length === 0) {
-          throw new Error('ফিডে কোনো সংবাদ পাওয়া যায়নি');
+        if (result.status !== 'success' || !result.data || result.data.length === 0) {
+          throw new Error('No news');
         }
 
-        const selectedNews = [];
-        const seenSources = new Set();
+        const newsList = result.data;
+        countBadge.innerText = `${toBnNum(newsList.length)}টি পত্রিকা লাইভ`;
 
-        for (const item of items) {
-          const rawTitle = item.querySelector('title')?.textContent || '';
-          const link = item.querySelector('link')?.textContent || '';
-          const pubDateStr = item.querySelector('pubDate')?.textContent || '';
-          const sourceElem = item.querySelector('source');
-          
-          let sourceName = sourceElem ? sourceElem.textContent.trim() : '';
-
-          // শিরোনাম থেকে সোর্সের নাম আলাদা করা (টাইটেল - সোর্স)
-          let title = rawTitle;
-          if (rawTitle.includes(' - ')) {
-            const parts = rawTitle.split(' - ');
-            if (!sourceName) sourceName = parts.pop().trim();
-            title = parts.join(' - ').trim();
-          }
-
-          if (!sourceName) sourceName = 'জাতীয় সংবাদ';
-
-          // প্রতিটি সোর্স থেকে কেবল ১টি করে প্রধান সংবাদ নেওয়া হবে
-          if (!seenSources.has(sourceName)) {
-            seenSources.add(sourceName);
-            selectedNews.push({
-              source: sourceName,
-              title: title,
-              link: link,
-              pubDate: pubDateStr ? new Date(pubDateStr) : new Date()
-            });
-          }
-
-          // ঠিক ১০টি ভিন্ন পত্রিকার খবর নেওয়া হলে লুপ শেষ
-          if (selectedNews.length === 10) break;
-        }
-
-        countBadge.innerText = `${toBnNum(selectedNews.length)}টি পত্রিকা লাইভ`;
-
-        // কার্ড রেন্ডার করা
-        container.innerHTML = selectedNews.map((item, index) => {
-          const timeText = formatBengaliTime(item.pubDate);
+        container.innerHTML = newsList.map((item, index) => {
+          const timeText = formatTime(item.pubDate);
 
           return `
             <a href="${item.link}" target="_blank" rel="noopener noreferrer" 
@@ -189,22 +130,19 @@
           `;
         }).join('');
 
-        timeLabel.innerText = 'সর্বশেষ আপডেট: ' + formatBengaliTime(new Date());
+        timeLabel.innerText = 'সর্বশেষ আপডেট: ' + formatTime(new Date());
 
       } catch (err) {
         container.innerHTML = `
           <div class="col-span-full bg-rose-50 border border-rose-200 text-rose-700 p-6 rounded-2xl text-center text-sm">
-            সংবাদ লোড করতে সমস্যা হয়েছে। অনুগ্রহ করে রিফ্রেশ বাটনে চাপুন।
+            সংবাদ ফেচ করতে সমস্যা হয়েছে। অনুগ্রহ করে নিশ্চিত করুন Web App Deployment এক্সেস "Anyone" দেওয়া আছে।
           </div>
         `;
       }
     }
 
-    // লোড হওয়া শুরু হবে
-    loadRealtimeNews();
-
-    // প্রতি ৫ মিনিট পরপর অটো-রিফ্রেশ
-    setInterval(loadRealtimeNews, 300000);
+    fetchLeadNews();
+    setInterval(fetchLeadNews, 300000);
   </script>
 </body>
 </html>
